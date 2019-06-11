@@ -40,10 +40,11 @@
 !  \end{description}
 !
 !EOP
-    integer          :: c, v, index1
+    integer          :: c, v, index1, row, col, rowt, colt
     integer          :: status
     type(ESMF_Field) :: tmpField,q2Field,uField,swdownField,swdirField,pcpField
     real, pointer    ::  tmp(:),q2(:),uwind(:),swdown(:),swdir(:),pcp(:)
+    real             :: lat, lon, latt, lont, sublat, sublon, tol
 ! ___________________________________________________
   call ESMF_StateGet(LIS_FORC_Base_State(n,findex),LIS_FORC_Tair%varname(1),tmpField,&
        rc=status)
@@ -95,9 +96,20 @@
    !    5'u2t',    &
    !    6'pt'     /)
 
-
+   lat = -43.65000
+   lon = 146.7000
+   row = 8
+   col = 274
+   tol = 0.001 
    do c = 1,LIS_rc%ntiles(n)
         index1 = LIS_domain(n)%tile(c)%index
+        colt = LIS_domain(n)%tile(c)%row
+        rowt = LIS_domain(n)%tile(c)%col
+        latt = LIS_domain(n)%grid(index1)%lat
+        lont = LIS_domain(n)%grid(index1)%lon
+        sublat = ABS(latt - lat)
+        sublon = ABS(lont - lon)
+
         ! test that precip is above 0 just in case forcing undef not set to LIS undef?
         if( AWRAL_struc(n)%metdata2(1,1,index1) .ne.LIS_rc%udef.and. &
               AWRAL_struc(n)%metdata2(1,6,index1) >= 0.0 ) then
@@ -115,7 +127,13 @@
             uwind(c) = LIS_rc%udef
             pcp(c) = LIS_rc%udef
          endif
-         ! DEBUG print *, "forcing vars in timeinterp: ", tmp(c), q2(c), swdown(c), swdir(c), uwind(c), pcp(c)
+         ! DEBUG
+         if (sublon < tol .and. sublat < tol) then 
+            print *, "lat, lon, row, col, forcing vars (tmp,q2,swdown,swdir,wind,pcp) in timeinterp: ", latt, lont, rowt, colt, tmp(c), q2(c), swdown(c), swdir(c), uwind(c), pcp(c)
+	 endif
+         if (rowt == row .and. colt == col) then
+	    print *, "row, col, lat, lon, forcing vars (tmp,q2,swdown,swdir,wind,pcp) in timeinterp: ", rowt, colt, latt, lont, tmp(c), q2(c), swdown(c), swdir(c), uwind(c), pcp(c)
+         endif
    enddo
 
 end subroutine timeinterp_AWRAL

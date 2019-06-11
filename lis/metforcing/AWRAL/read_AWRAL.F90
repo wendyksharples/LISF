@@ -9,13 +9,14 @@
 !BOP
 !
 ! !ROUTINE: read_AWRAL
-! \label{read_AWRAL}
+!  \label{read_AWRAL}
 !
 ! !REVISION HISTORY:
-!  30 Jan 2017: Sujay Kumar, Initial version
+!  10 Dec 2018: Wendy Sharples
 !
 ! !INTERFACE:
 subroutine read_AWRAL( order, n, findex, year, doy, ferror_AWRAL )
+
 
 ! !USES:
   use LIS_coreMod,        only : LIS_rc, LIS_domain, LIS_masterproc
@@ -81,15 +82,14 @@ subroutine read_AWRAL( order, n, findex, year, doy, ferror_AWRAL )
 ! netcdf variables
   integer :: ncid, varid, status 
   integer            :: timestep
-  real               :: missingValue
+  real               :: missingValue, tol, latt, lont, lat, lon, sublat, sublon, col_real, row_real
   integer            :: pds5_val, pds7_val
 
-  integer            :: c1,r1,c,r
-  real,allocatable   :: datain1(:,:) ! no idea?
-
+  integer            :: c1,r1,c,r,rowt,colt, sizer, sizec
+  real,allocatable :: temp2awral(:,:,:)
 
   allocate(datain(AWRAL_struc(n)%ncol,AWRAL_struc(n)%nrow))
-  allocate(datain1(AWRAL_struc(n)%ncol,AWRAL_struc(n)%nrow))
+  allocate(temp2awral(AWRAL_struc(n)%ncol,AWRAL_struc(n)%nrow,N_AF))
   allocate(regrid(LIS_rc%lnc(n),LIS_rc%lnr(n)))
   allocate(lb(AWRAL_struc(n)%ncol,AWRAL_struc(n)%nrow))
 
@@ -104,6 +104,7 @@ subroutine read_AWRAL( order, n, findex, year, doy, ferror_AWRAL )
 
 
 !-- Set necessary parameters for call to interp_AWRAL   
+temp2awral = 0.0     ! initialize
 
 !-- Check initially if file exists:
   do v = 1, N_AF  ! N_AF
@@ -117,7 +118,7 @@ subroutine read_AWRAL( order, n, findex, year, doy, ferror_AWRAL )
   enddo
 
 !-- Get timestep from cdoy --!
-  timestep = doy - 1
+  timestep = doy
 
   do v = 1, N_AF ! N_AF
     regrid = LIS_rc%udef
@@ -143,50 +144,94 @@ subroutine read_AWRAL( order, n, findex, year, doy, ferror_AWRAL )
 
     status = nf90_get_var(ncid, varid, datain, &
                                      start=(/1,1,timestep/), &
-    count=(/LIS_rc%lnc(n),LIS_rc%lnr(n),1/))
-
-   ! probably need to use these once regridding and the land mask needs to be taken into consideration 
-
-   ! do r=1, AWRAL_struc(n)%nrow
-   !     do c=1,AWRAL_struc(n)%ncol
-   !        c1 = c
-   !        r1 = AWRAL_struc(n)%nrow-r+1
-   !        datain1(c1+(r1-1)*AWRAL_struc(n)%ncol) = &
-   !             datain(c+(r-1)*AWRAL_struc(n)%ncol)
-   !     enddo
-   ! enddo
-
-    !lb = .false. 
-    !do t=1,ndata
-    !    if ( datain1(t) .ne. missingvalue ) then
-    !       lb(t) = .true. 
-    !    endif
-    !enddo
-
-    ! don't need this for the time being
-    ! call interp_AWRAL( n, findex, ndata, datain, lb, LIS_rc%gridDesc(n,:), &
-    !      LIS_rc%lnc(n), LIS_rc%lnr(n), regrid )
-    
+    count=(/LIS_rc%gnc(n),LIS_rc%gnr(n),1/))
+    ! Close netCDF file.
+    status=nf90_close(ncid)
+    if (year==2011) then
+       write (*,*) "We are in the next year: ", cyear, " and doy is: ", doy, " and v is: ", v, " and datain(300,300) is: ", datain(300,300)
+    endif  
+    do j=1,AWRAL_struc(n)%nrow
+         do i=1,AWRAL_struc(n)%ncol
+            temp2awral(i,j,v) = datain(i,j)           
+         enddo
+    enddo
+  enddo
+  
+  do v = 1, N_AF ! N_AF
+    lat = -43.65000
+    lon = 146.7000
+    tol = 0.001
+    rowt = 300
+    colt = 300
+    !write (*,*) "temp2awral(300,300,v) is: ", temp2awral(300,300,v)
     do j = 1, LIS_rc%lnr(n)
         do i = 1, LIS_rc%lnc(n)
-           if ( datain(i,j) .ne. LIS_rc%udef ) then
+           if ( temp2awral(i,j,v) .ne. LIS_rc%udef ) then
               index1 = LIS_domain(n)%gindex(i,j)
               if(index1 .ne. -1) then
+                 latt = LIS_domain(n)%grid(index1)%lat
+        	 lont = LIS_domain(n)%grid(index1)%lon
+                 call awrallatlon_2_globalgrid(latt, lont, AWRAL_struc(n)%gridDesci(4), AWRAL_struc(n)%gridDesci(5), AWRAL_struc(n)%gridDesci(9), AWRAL_struc(n)%gridDesci(10), rowt, colt)
+                 sublat = ABS(latt - lat)
+        	 sublon = ABS(lont - lon)
                  if(order.eq.1) then 
-                    AWRAL_struc(n)%metdata1(1,v,index1) = datain(i,j)
+                    AWRAL_struc(n)%metdata1(1,v,index1) = temp2awral(colt,rowt,v)
                  elseif(order.eq.2) then 
-                    AWRAL_struc(n)%metdata2(1,v,index1) = datain(i,j)
+                    AWRAL_struc(n)%metdata2(1,v,index1) = temp2awral(colt,rowt,v)
                  endif
-                 ! DEBUG write (*,*) "v is: ", v, " and datain is: ",datain(i,j)
+                 ! DEBUG
+                 if ( rowt.eq.605 .and. colt.eq.144 ) then
+                    write (*,*) "ROW and COL should produce REAL numbers: ", rowt, colt, v, temp2awral(colt,rowt,v)
+                 endif
+                 if (sublon < tol .and. sublat < tol) then
+                    write (*,*) "\norder is: ", order, " SHAPE of temp2awral is: ", SHAPE(temp2awral), " tile row and col are: ", rowt, colt, "total number of rows, cols, are: ",  LIS_rc%lnr(n), LIS_rc%lnc(n)
+                    write (*,*) "lat,lon is:", latt, lont, " i,j is: ",i,j, " !index1 is ", index1, " v is: ", v, " and temp2awral is: ",temp2awral(colt,rowt,v)
+
+                 endif
               endif
            endif
            
         enddo
     enddo
-
-  ! Close netCDF file.
-    status=nf90_close(ncid)
   enddo
-     
+  deallocate(temp2awral)
+  deallocate(datain)
+  deallocate(regrid)
+  deallocate(lb)
 end subroutine read_AWRAL
+
+!BOP
+!
+! !ROUTINE: awrallatlon_2_globalgrid
+! \label{awrallatlon_2_globalgrid}
+!
+! !REVISION HISTORY:
+!  05.06.2019: Wendy Sharples
+!
+! !INTERFACE:
+subroutine awrallatlon_2_globalgrid(lat, lon, latllcnr, lonllcnr, deltalat, deltalon, row, col)
+  use LIS_logMod,           only : LIS_logunit, LIS_endrun
+
+  implicit none
+! !ARGUMENTS:
+  real, intent(in)                     :: lat, lon, latllcnr, lonllcnr, deltalat, deltalon
+  integer, intent(inout)               :: row, col
+!
+! !DESCRIPTION:
+! Gets global i,j from lat,lon
+!
+!
+!EOP
+
+  real                                :: row_real, col_real
+  
+  row_real = (deltalat + ABS(latllcnr - lat))/deltalat
+  col_real = (deltalon + ABS(lonllcnr - lon))/deltalon
+  row = NINT(row_real)
+  col = NINT(col_real) 
+  ! DEBUG 
+  if(row.eq.8 .and. col.eq.695) then
+    write (*,*) " Lat lon to row, col: ", row, col, " lat, lon: ", lat, lon, " latllcnr lonllcnr: ", latllcnr, lonllcnr, " row_real, col_real: ", row_real, col_real
+  endif
+end subroutine awrallatlon_2_globalgrid
 

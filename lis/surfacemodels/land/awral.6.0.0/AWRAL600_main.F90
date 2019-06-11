@@ -1,5 +1,4 @@
-!-----------------------BEGIN NOTICE -- DO NOT EDIT-----------------------
-! NASA Goddard Space Flight Center Land Information System (LIS) v7.0     
+
 !-----------------------BEGIN NOTICE -- DO NOT EDIT-----------------------
 #include "LIS_misc.h"
 !BOP
@@ -51,7 +50,7 @@ subroutine AWRAL600_main(n)
 
 ! define variables for AWRAL600
     integer, parameter            :: dp = selected_real_kind(15, 307) ! to store tmp vars as doubles - convert back
-    integer                       :: debug                  ! if -1 then no debug
+    integer                       :: debug, proc            ! if -1 then no debug
     real                          :: sublon, sublat, tol
     real                          :: tmp_debuglat           ! debug cell lat
     real                          :: tmp_debuglon           ! debug cell lon
@@ -156,12 +155,19 @@ subroutine AWRAL600_main(n)
     ! check AWRAL600 alarm. If alarm is ring, run model. 
     alarmCheck = LIS_isAlarmRinging(LIS_rc, "AWRAL600 model alarm")
     if (alarmCheck) Then
-        do t = 1, LIS_rc%npatch(n, LIS_rc%lsm_index)
+        proc = 1
+        if (LIS_rc%npatch(n, LIS_rc%lsm_index) == 123126) then
+           proc = 0
+        endif
+        print *, "proc, tile index max and n is: ", proc, LIS_rc%npatch(n, LIS_rc%lsm_index),n
+        do t = 1, 2 !LIS_rc%npatch(n, LIS_rc%lsm_index)
             dt = LIS_rc%ts
-            row = LIS_surface(n, LIS_rc%lsm_index)%tile(t)%row
-            col = LIS_surface(n, LIS_rc%lsm_index)%tile(t)%col
+            row = LIS_surface(n,LIS_rc%lsm_index)%tile(t)%row
+            col = LIS_surface(n,LIS_rc%lsm_index)%tile(t)%col
             lat = LIS_domain(n)%grid(LIS_domain(n)%gindex(col, row))%lat
             lon = LIS_domain(n)%grid(LIS_domain(n)%gindex(col, row))%lon
+            
+            print *, "LIS dom vars: tile, tileid, col, row, lat, lon: ", t, LIS_surface(n,LIS_rc%lsm_index)%tile(t)%tile_id, col, row, lat, lon
 
             ! retrieve forcing data from AWRAL600_struc(n)%awral600(t) and assign to local variables
             ! Tair: average air temperature
@@ -169,23 +175,23 @@ subroutine AWRAL600_main(n)
             tmp_Tair = ANINT(1000000.0*tmp_Tair)/1000000.0
  
             ! Swdown: downward shortwave radiation
-            tmp_Swdown       = 0.0 + AWRAL600_struc(n)%awral600(t)%Swdown   / AWRAL600_struc(n)%forc_count
+            tmp_Swdown       = AWRAL600_struc(n)%awral600(t)%Swdown   / AWRAL600_struc(n)%forc_count
             tmp_Swdown = ANINT(1000000.0*tmp_Swdown)/1000000.0
  
             ! Rainf: daily gross precipitation
-            tmp_Rainf        = 0.0 + AWRAL600_struc(n)%awral600(t)%Rainf    / AWRAL600_struc(n)%forc_count
+            tmp_Rainf        = AWRAL600_struc(n)%awral600(t)%Rainf    / AWRAL600_struc(n)%forc_count
 	    tmp_Rainf = ANINT(1000000.0*tmp_Rainf)/1000000.0 
 
             ! Qair: actual vapour pressure
-            tmp_Qair         = 0.0 + AWRAL600_struc(n)%awral600(t)%Qair     / AWRAL600_struc(n)%forc_count
+            tmp_Qair         = AWRAL600_struc(n)%awral600(t)%Qair     / AWRAL600_struc(n)%forc_count
             tmp_Qair = ANINT(1000000.0*tmp_Qair)/1000000.0 
 
             ! Wind_E: 2m wind magnitude
-            tmp_Wind_E       = 0.0 + AWRAL600_struc(n)%awral600(t)%Wind_E   / AWRAL600_struc(n)%forc_count
+            tmp_Wind_E       = AWRAL600_struc(n)%awral600(t)%Wind_E   / AWRAL600_struc(n)%forc_count
 	    tmp_Wind_E = ANINT(1000000.0*tmp_Wind_E)/1000000.0 
 
             ! Swdirect: expected downwelling shortwave radiation on a cloudless day
-            tmp_Swdirect     = 0.0 + AWRAL600_struc(n)%awral600(t)%Swdirect / AWRAL600_struc(n)%forc_count
+            tmp_Swdirect     = AWRAL600_struc(n)%awral600(t)%Swdirect / AWRAL600_struc(n)%forc_count
 	    tmp_Swdirect = ANINT(1000000.0*tmp_Swdirect)/1000000.0
 
             ! check validity of Tair
@@ -332,16 +338,18 @@ subroutine AWRAL600_main(n)
             sublat = ABS(tmp_debuglat - tmp_latitude)
             sublon = ABS(tmp_debuglon - tmp_longitude)
             if (sublon < tol .and. sublat < tol) then
-              debug = t
+              debug = -1
               print *, "Before calling driver: cell, lat, lon, fhru, hveg, laimax, sr, sg, s0, ss, sd, mleaf, and tgrow are: ",t, lat, lon, tmp_fhru, tmp_hveg, tmp_laimax, tmp_sr, tmp_sg, tmp_s0, tmp_ss, tmp_sd, tmp_mleaf, tmp_tgrow
             else
               debug = -1
             end if
+            debug = -t
             ! Print out forcing vars before they go in:
             ! DEBUG
-            if (sublon < tol .and. sublat < tol) then
-              print *, "Forcing vars before going into c Tair, Swdown, Rainf, Qair, Wind, Swdirect: ",tmp_Tair, tmp_Swdown, tmp_Rainf, tmp_Qair, tmp_Wind_E, tmp_Swdirect
-            endif
+            !if (sublon < tol .and. sublat < tol) then
+            print *, "Forcing vars before going into c: cell, lat, lon, Tair, Swdown, Rainf, Qair, Wind, Swdirect: ",t, tmp_latitude, tmp_longitude, tmp_Tair, tmp_Swdown, tmp_Rainf, tmp_Qair, tmp_Wind_E, tmp_Swdirect
+            !stop 123
+            !endif
 
 
             ! call model physics 

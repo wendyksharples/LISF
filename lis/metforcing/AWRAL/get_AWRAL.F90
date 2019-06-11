@@ -78,7 +78,7 @@ subroutine get_AWRAL(n, findex)
     hrn = 0
     mnn = 0
     ssn = 0
-    tsn = 172800
+    tsn = 86400
     call LIS_tick( timenext, doyn, gmtn, yrn, mon, dan, hrn, mnn, ssn, tsn )
 
 !-- Determine LIS's current time and the time of the AWRAL file:
@@ -88,7 +88,7 @@ subroutine get_AWRAL(n, findex)
     hrp = 0
     mnp = 0
     ssp = 0
-    tsp = 0
+    tsp = -86400
     call LIS_tick( AWRAL_file_timep, doyp, gmtp, yrp, mop, dap, hrp, mnp, ssp, tsp )
 
 !-- AWRAL product time; end accumulation time data
@@ -98,7 +98,7 @@ subroutine get_AWRAL(n, findex)
     hrc = 0
     mnc = 0
     ssc = 0
-    tsc = 86400
+    tsc = 0
     call LIS_tick( AWRAL_file_timec, doyc, gmtc, yrc, moc, dac, hrc, mnc, ssc, tsc )
 
 !-- Ensure that data is found during first time step
@@ -126,12 +126,15 @@ subroutine get_AWRAL(n, findex)
 
      ! Determine and return filename of AWRAL file 
        write(LIS_logunit,*) '[INFO] Getting new AWRAL data no time interp necessary'
+       write(*,*) "Time before reading file is: ", AWRAL_file_timec, yrc, moc, doyc
      ! Open, read, and reinterpolate AWRAL field to LIS-defined grid
-       call read_AWRAL ( order, n, findex, yrc, doyc, ferror_AWRAL )
+        if ( yrc > yrp ) then
+	  write(*,*) "WE ARE MOVING ON TO NEXT YEAR, prev date, current date: ", yrp, mop, doyp, yrc, moc, doyc
+        endif   
+        call read_AWRAL ( order, n, findex, yrc, doyc, ferror_AWRAL )
      ! Assign latest AWRAL file time to stored AWRAL time variable
-       write(*,*) "Time is: ", AWRAL_file_timec
-       AWRAL_struc(n)%AWRALtime = AWRAL_file_timec
-       index1 = LIS_domain(n)%gindex(1,1)
+        write(*,*) "Time is: ", AWRAL_file_timec
+        AWRAL_struc(n)%AWRALtime = AWRAL_file_timec
     else
       write(LIS_logunit,*) "[ERR] AWRAL READER CANNOT HANDLE LIS "
       write(LIS_logunit,*) "[ERR] TIMESTEP > 86400 secs -- AT THIS TIME.  STOPPING ..."

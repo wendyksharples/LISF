@@ -49,7 +49,7 @@ subroutine AWRAL600_f2t(n)
     type(ESMF_Field)  :: q2Field
     real, pointer     :: q2(:)
  
-    ! Incident Shortwave Radiation [W/m2]a       ==> shortwave radiation (rgt, MJ/m2)
+    ! Incident Shortwave Radiation [W/m2]       ==> shortwave radiation (rgt, MJ/m2)
     type(ESMF_Field)  :: swdField
     real, pointer     :: swd(:)
  
@@ -114,26 +114,30 @@ subroutine AWRAL600_f2t(n)
     AWRAL600_struc(n)%forc_count = AWRAL600_struc(n)%forc_count + 1
  
     !!! pass forcing data to tiles
+    print*, "in f2t: num tiles is: ", LIS_rc%npatch(n, LIS_rc%lsm_index)
     do t=1, LIS_rc%npatch(n, LIS_rc%lsm_index)
         tid = LIS_surface(n, LIS_rc%lsm_index)%tile(t)%tile_id
 
         ! TAIR
-        AWRAL600_struc(n)%awral600(t)%tair = AWRAL600_struc(n)%awral600(t)%tair + tmp(tid)
+        AWRAL600_struc(n)%awral600(t)%Tair = AWRAL600_struc(n)%awral600(t)%Tair + tmp(tid)
 
         ! QAIR
-        AWRAL600_struc(n)%awral600(t)%qair = AWRAL600_struc(n)%awral600(t)%qair + q2(tid)
+        AWRAL600_struc(n)%awral600(t)%Qair = AWRAL600_struc(n)%awral600(t)%Qair + q2(tid)
 
         ! SWDOWN
-        AWRAL600_struc(n)%awral600(t)%swdown = AWRAL600_struc(n)%awral600(t)%swdown + swd(tid)
+        AWRAL600_struc(n)%awral600(t)%Swdown = AWRAL600_struc(n)%awral600(t)%Swdown + swd(tid)
 
         ! SWDIRECT
-        AWRAL600_struc(n)%awral600(t)%swdirect = AWRAL600_struc(n)%awral600(t)%swdirect + swdir(tid)
+        AWRAL600_struc(n)%awral600(t)%Swdirect = AWRAL600_struc(n)%awral600(t)%Swdirect + swdir(tid)
 
         ! WIND_E
-        AWRAL600_struc(n)%awral600(t)%wind_e = AWRAL600_struc(n)%awral600(t)%wind_e + uwind(tid)
+        AWRAL600_struc(n)%awral600(t)%Wind_E = AWRAL600_struc(n)%awral600(t)%Wind_E + uwind(tid)
 
         ! RAINF
-        AWRAL600_struc(n)%awral600(t)%rainf = AWRAL600_struc(n)%awral600(t)%rainf + pcp(tid)
+        AWRAL600_struc(n)%awral600(t)%Rainf = AWRAL600_struc(n)%awral600(t)%Rainf + pcp(tid)
+        ! DEBUG 
+        !print*, "In f2t, cell, tid and forcing vars Tair, Qair, Swdown, Swdirect, Wind_E and Rainf are: ",t, tid, AWRAL600_struc(n)%awral600(t)%Tair, AWRAL600_struc(n)%awral600(t)%Qair, AWRAL600_struc(n)%awral600(t)%Swdown, AWRAL600_struc(n)%awral600(t)%Swdirect, AWRAL600_struc(n)%awral600(t)%Wind_E, AWRAL600_struc(n)%awral600(t)%Rainf
+
     enddo
  
 end subroutine AWRAL600_f2t

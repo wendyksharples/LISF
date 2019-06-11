@@ -240,6 +240,10 @@ void awral_driver_600_(int *debug, double *tat, double *rgt, double *pt, double 
                 if (*debug >= 0){
                     fprintf(fp, "\n\nforcing data is: rg %f ta %f pe %f u2 %f pg %f radclearsky %f", rg, ta, pe, u2, pg, radclearsky);
                 }
+                if (rg <= 0 || pe <= 0 || radclearsky <=0 ){
+                    printf("\nforcing data is: rg %f ta %f pe %f u2 %f pg %f radclearsky %f, for cell: %d exiting...", *debug, rg, ta, pe, u2, pg, radclearsky);
+                    exit(0);
+                }
 
                 if (*debug >= 0){
                     fprintf(fp, "\nhru %d consts are: alb_dry_hru %f alb_wet_hru %f cgsmax_hru %f er_frac_ref_hru %f fsoilemax_hru %f lairef_hru %f rd_hru %f s_sls_hru %f sla_hru %f tgrow_hru %f tsenc_hru %f ud0_hru %f us0_hru %f vc_hru %f w0lime_hru %f w0ref_alb_hru %f wdlimu_hru %f wslimu_hru %f", hru, alb_dry_hru, alb_wet_hru, cgsmax_hru, er_frac_ref_hru, fsoilemax_hru, lairef_hru, rd_hru, s_sls_hru, sla_hru, tgrow_hru, tsenc_hru, ud0_hru, us0_hru, vc_hru, w0lime_hru, w0ref_alb_hru, wdlimu_hru, wslimu_hru);
@@ -285,6 +289,8 @@ void awral_driver_600_(int *debug, double *tat, double *rgt, double *pt, double 
                 double rsn = (1.0 - alb) * rgeff;
 
                 double tkelv = ta + 273.15;
+                printf("\nforcing data is: cell %d rg %f ta %f pe %f u2 %f pg %f radclearsky %f\n", *debug, rg, ta, pe, u2, pg, radclearsky);
+                printf("vars: stefbolz %f tkelv %f pe %f rgeff %f radclearsky %f\n", stefbolz,tkelv,pe,rgeff,radclearsky);
                 double rlin = stefbolz * pow(tkelv,4.0) * (1.0 - (1.0 - 0.65 * pow((pe / tkelv),0.14)) * (1.35 * rgeff / radclearsky - 0.35));
                 double rlout = 1.0 * stefbolz * pow(tkelv,4);
                 double rln = (rlin - rlout) * 0.0864;
@@ -295,7 +301,8 @@ void awral_driver_600_(int *debug, double *tat, double *rgt, double *pt, double 
                 double ga = ku2*u2;
 
                 //  Potential evaporation
-                //New for v4 (different to original in Van Dijk (2010)) 
+                //New for v4 (different to original in Van Dijk (2010))
+                printf("vars: delta %f rneff %f gamma %f pes %f pe %f u2 %f gamma %f lambda %f\n", delta,rneff,gamma,pes,pe,u2,gamma,lambda); 
                 double e0_c = (delta * rneff + 6.43 / 1000.0 * gamma * (pes - pe) * (1.0 + 0.536 * u2)) / (delta + gamma) / lambda;
 
                 e0_c = fmax(e0_c,0.);

@@ -214,9 +214,9 @@ subroutine noah36_main(n)
 
 #if 0 
   svk_statebf = 0.0
-  
+  print *, "tile index max and n is: ",LIS_rc%lsm_index,n
   do t = 1,LIS_rc%npatch(n,LIS_rc%lsm_index)
-
+     
      svk_col = LIS_surface(n,LIS_rc%lsm_index)%tile(t)%col
      svk_row = LIS_surface(n,LIS_rc%lsm_index)%tile(t)%row
      
